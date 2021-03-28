@@ -7,6 +7,7 @@ Uses the following services:
 * AWS Lambda
 * AWS EventBridge for scheduling
 * AWS Timestream for time-series data
+* AWS Secret Manager for storing Tibber API key
 
 All lambdas are written in Golang.
 
