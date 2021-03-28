@@ -1,15 +1,12 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+*.js
+!jest.config.js
+*.d.ts
+node_modules
 
-# Test binary, built with `go test -c`
-*.test
+# CDK asset staging directory
+.cdk.staging
+cdk.out
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
+# IDEA
+*.iml
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
