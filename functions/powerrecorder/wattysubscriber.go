@@ -10,7 +10,7 @@ import (
 
 const tibberGQLSubscriptionUrl = "wss://api.tibber.com/v1-beta/gql/subscriptions"
 
-func connectToWatty(accessToken, homeId string) error {
+func recordPowerUsageFromWatty(accessToken, homeId string) error {
 
 	sclient := graphql.NewSubscriptionClient(tibberGQLSubscriptionUrl).
 		WithConnectionParams(map[string]interface{}{
@@ -23,9 +23,9 @@ func connectToWatty(accessToken, homeId string) error {
 		"homeId": graphql.ID(homeId),
 	}
 
-	dataChan := make(chan subscription)
+	dataChan := make(chan *subscription)
 
-	// Subscribe subscriptions
+	// Subscribe to real-time power usage
 	id, err := sclient.Subscribe(&subscription{}, variables, func(dataValue *json.RawMessage, errValue error) error {
 		if errValue != nil {
 			return errValue
@@ -33,10 +33,12 @@ func connectToWatty(accessToken, homeId string) error {
 		if dataValue == nil {
 			return errors.New("got nil data")
 		}
-		m := subscription{}
-		if err := json.Unmarshal(*dataValue, &m); err != nil {
+		m := &subscription{}
+		if err := json.Unmarshal(*dataValue, m); err != nil {
 			return errors.Wrap(err, "unmarshalling measurement")
 		}
+
+		// pass data to channel
 		dataChan <- m
 		return nil
 	})
@@ -44,22 +46,25 @@ func connectToWatty(accessToken, homeId string) error {
 		return errors.Wrap(err, "starting subscription")
 	}
 
-	// finally run the subscription in a goroutine
+	// finally run the subscription in a goroutine. If start fails, we'll pass nil to the dataChan.
 	go func() {
 		err = sclient.Run()
 		if err != nil {
 			fmt.Println("Error calling Run(): " + err.Error())
+			dataChan <- nil // pass nil in order to cancel select below
 		}
 	}()
 
-	// block here until we have data
+	// block here until we have data. Once we get data or time out, unsubscribe and exit.
 	select {
 	case sub := <-dataChan:
-		ingest(record{HomeId: homeId, AccumulatedConsumption: float64(sub.LiveMeasurement.AccumulatedConsumption)})
+		if sub != nil {
+			ingest(record{HomeId: homeId, AccumulatedConsumption: float64(sub.LiveMeasurement.AccumulatedConsumption)})
+		}
 	case <-time.NewTimer(time.Second * 10).C:
-		fmt.Println("Timeout!")
+
 	}
-	if err := sclient.Unsubscribe(id);err != nil {
+	if err := sclient.Unsubscribe(id); err != nil {
 		fmt.Println("an error occurred trying to unsubscribe from subscription: " + err.Error())
 	}
 	return nil

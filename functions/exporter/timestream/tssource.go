@@ -21,7 +21,6 @@ func NewDataSource() *Source {
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			KeepAlive: 10 * time.Second,
-			// DualStack: true,
 			Timeout: 10 * time.Second,
 		}).DialContext,
 		MaxIdleConns:          2,
@@ -30,9 +29,8 @@ func NewDataSource() *Source {
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 
-	// So client makes HTTP/2 requests
 	if err := http2.ConfigureTransport(tr); err != nil {
-		log.Fatalf("Error configuring HTTP transport: %v", err)
+		log.Fatalf("error configuring HTTP transport: %v", err)
 	}
 
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("eu-west-1"), MaxRetries: aws.Int(3), HTTPClient: &http.Client{Transport: tr}})

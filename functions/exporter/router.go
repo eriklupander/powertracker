@@ -31,9 +31,13 @@ func handle(source DataSource) func(w http.ResponseWriter, r *http.Request) {
 		fromStr := r.URL.Query().Get("from")
 		toStr := r.URL.Query().Get("to")
 		aggregate := r.URL.Query().Get("aggregate")
+		graph := r.URL.Query().Get("graph")
 
 		if output == "" {
 			output = "csv"
+		}
+		if graph == "" {
+			graph = "hist"
 		}
 
 		entries, err := source.GetAll(fromStr, toStr)
@@ -50,7 +54,7 @@ func handle(source DataSource) func(w http.ResponseWriter, r *http.Request) {
 
 		switch output {
 		case "png":
-			exportPNG(w, entries)
+			exportPNG(w, entries, graph)
 		case "csv":
 			fallthrough
 		default:
@@ -72,11 +76,24 @@ func exportCSV(w http.ResponseWriter, entries []model.Entry) {
 	_, _ = w.Write(data)
 }
 
-func exportPNG(w http.ResponseWriter, entries []model.Entry) {
-	data, err := graph.Export(entries)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+func exportPNG(w http.ResponseWriter, entries []model.Entry, graphType string) {
+	var data []byte
+	var err error
+	switch graphType {
+	case "lineplot":
+		data, err = graph.ExportLinePlot(entries)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	case "hist":
+		fallthrough
+	default:
+		data, err = graph.ExportHist(entries)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "image/png")

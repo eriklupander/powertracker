@@ -1,13 +1,18 @@
 # Powertracker
 Keeping track of electricity usage using AWS services, Tibber's API and the Watty energy monitor/load balancer.
+![diagram](docs/histogram-1h-multiday.png)
+_(example exported diagram)_
+## Architecture
+![img](docs/powertracker.png)
 
-## AWS services
+### AWS services
 Uses the following services:
 * AWS API Gateway
 * AWS Lambda
 * AWS EventBridge for scheduling
 * AWS Timestream for time-series data
 * AWS Secret Manager for storing Tibber API key
+
 
 All lambdas are written in Golang.
 

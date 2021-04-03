@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/labstack/gommon/log"
@@ -14,14 +13,14 @@ const tibberApiKeyKey = "tibber_api_key"
 
 var tibberApiKey, tibberHomeId string
 
-// handler is the function called by the lambda.
+// handler is the function called when the lambda is invoked, i.e. by the Event Bridge event in our case.
 func handler(ctx context.Context) error {
 	if err := validateConfig(); err != nil {
 		return err
 	}
 
 	// connect to watty
-	if err := connectToWatty(tibberApiKey, tibberHomeId); err != nil {
+	if err := recordPowerUsageFromWatty(tibberApiKey, tibberHomeId); err != nil {
 		log.Error(err.Error())
 	}
 
@@ -32,24 +31,9 @@ func handler(ctx context.Context) error {
 // expect to have something done for every query here.
 func main() {
 	fmt.Println("init power recorder")
-	var err error
-	tibberConfigJSON, err := getSecret(tibberConfigKey)
-	if err != nil {
-		panic(err.Error())
-	}
-	config := make(map[string]interface{})
-	if err := json.Unmarshal([]byte(tibberConfigJSON), &config); err != nil {
-		panic(err.Error())
-	}
-	var ok bool
-	tibberApiKey, ok = config[tibberApiKeyKey].(string)
-	if !ok {
-		panic("unable to resolve tibber_api_key from JSON")
-	}
-	tibberHomeId, ok = config[tibberHomeIdKey].(string)
-	if !ok {
-		panic("unable to resolve tibber_home_id from JSON")
-	}
+
+	// load secrets etc, will panic on errors.
+	configure()
 
 	lambda.StartWithContext(context.Background(), handler)
 }

@@ -13,15 +13,15 @@ export class PowertrackerStack extends cdk.Stack {
     constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props);
 
-        // set up Timestream DB
+        // set up Timestream DB (is non-idempotent operation so commented out for now)
+
         // const timeStreamDB = new PowerTrackerTimestreamConstruct(this, "powertracker_timestream", {
         //     databaseName: "powertracker",
         //     tableName: "power_record"
         // })
 
-
         // Build powerecorder lambda
-        const powerRecorderFunction = this.buildGolangLambda('powerRecorder', path.join(__dirname, '../functions/powerRecorder'), 'main');
+        const powerRecorderFunction = this.buildGolangLambda('powerRecorder', path.join(__dirname, '../functions/powerRecorder'), 'main', 10);
 
         // Build EventBridge rule with cron expression and bind to lambda
         const rule = new ruleCdk.Rule(this, "collect_power_rule", {
@@ -31,41 +31,37 @@ export class PowertrackerStack extends cdk.Stack {
         rule.addTarget(new targets.LambdaFunction(powerRecorderFunction))
 
         // Build API lambda
-        const policyStmt = new iam.PolicyStatement()
-        policyStmt.addActions(
+        const powerRecorderPolicyStmt = new iam.PolicyStatement()
+        powerRecorderPolicyStmt.addActions(
             "secretsmanager:GetSecretValue",
             "timestream:*"
         )
-        policyStmt.addResources(
-            "*"
-            // "arn:aws:secretsmanager:*:secret:prod/tibber_config-*",
-            // "arn:aws:timestream:eu-west-1:378539896247:database/powertracker"
+        powerRecorderPolicyStmt.addResources(
+            "arn:aws:secretsmanager:*:secret:prod/tibber_config-*",
+            "arn:aws:timestream:*"
         )
+        powerRecorderFunction.addToRolePolicy(powerRecorderPolicyStmt)
 
-        powerRecorderFunction.addToRolePolicy(policyStmt)
-
-        const exporterLambdaFn = this.buildGolangLambda('exporter-api', path.join(__dirname, '../functions/exporter'), 'main');
-        const policyStmt2 = new iam.PolicyStatement()
-        policyStmt2.addActions(
-            "secretsmanager:GetSecretValue",
+        const exporterLambdaFn = this.buildGolangLambda('exporter-api', path.join(__dirname, '../functions/exporter'), 'main', 30);
+        const exporterPolicyStmt = new iam.PolicyStatement()
+        exporterPolicyStmt.addActions(
             "timestream:*",
         )
-
-        policyStmt2.addResources(
-            "*",
-            "arn:aws:secretsmanager:*:secret:prod/tibber_config-*",
+        exporterPolicyStmt.addResources(
+            "arn:aws:timestream:*",
         )
-        exporterLambdaFn.addToRolePolicy(policyStmt2)
+        exporterLambdaFn.addToRolePolicy(exporterPolicyStmt)
 
-        // Create Rest API Gateway in front of the lambda
-        const apiGtw = this.createApiGatewayForLambda("exporter-api-endpoint", exporterLambdaFn, 'Exposed endpoint')
+        // Create HTTP API Gateway in front of the lambda
+        const apiGtw = this.createApiGatewayForLambda("exporter-api-endpoint", exporterLambdaFn, 'Powertracker endpoints')
 
-        // Output the DNS of your API gateway deployment
+        // Output the hostname of your the API gateway
         new cdk.CfnOutput(this, 'lambda-url', {value: apiGtw.url!})
     }
 
-    // buildGolangLambda builds a docker image with the code and creates the lambda function.
-    buildGolangLambda(id: string, lambdaPath: string, handler: string): lambda.Function {
+    // buildGolangLambda builds a docker image from the code at <lambdaPath> (e.g. relative path to go code root)
+    // and creates the lambda function by using a docker image.
+    buildGolangLambda(id: string, lambdaPath: string, handler: string, timeout: number): lambda.Function {
         const environment = {
             CGO_ENABLED: '0',
             GOOS: 'linux',
@@ -86,11 +82,11 @@ export class PowertrackerStack extends cdk.Stack {
             }),
             handler,
             runtime: lambda.Runtime.GO_1_X,
-            timeout: cdk.Duration.seconds(10),
+            timeout: cdk.Duration.seconds(timeout),
         });
     }
 
-    // createApiGatewayForLambda creates a HTTP API Gateway for the supplied lambda function
+    // createApiGatewayForLambda creates a HTTP API Gateway for the supplied lambda function.
     createApiGatewayForLambda(id: string, handler: lambda.Function, desc: string): HttpApi {
 
         const httpApi = new HttpApi(this, id, {

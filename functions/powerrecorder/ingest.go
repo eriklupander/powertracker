@@ -15,11 +15,11 @@ import (
 func ingest(rec record) {
 	tr := &http.Transport{
 		ResponseHeaderTimeout: 10 * time.Second,
-		Proxy: http.ProxyFromEnvironment,
+		Proxy:                 http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			KeepAlive: 10 * time.Second,
 			// DualStack: true,
-			Timeout:   10 * time.Second,
+			Timeout: 10 * time.Second,
 		}).DialContext,
 		MaxIdleConns:          2,
 		IdleConnTimeout:       5 * time.Second,
@@ -121,6 +121,6 @@ func describeDb(writeSvc *timestreamwrite.TimestreamWrite, databaseName string) 
 }
 
 type record struct {
-	HomeId string
+	HomeId                 string
 	AccumulatedConsumption float64
 }

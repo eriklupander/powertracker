@@ -8,14 +8,25 @@ import (
 )
 
 func Aggregate(entries []model.Entry, aggregate string) ([]model.Entry, error) {
+
 	layout := ""
+	divider := 12.0
 	switch aggregate {
+
 	case "1h":
 		layout = "2006-01-02 15"
+		divider = 1.0
 	case "1d":
 		layout = "2006-01-02"
-	case "1m":
+		divider = 1.0 / 24.0
+	case "1M":
 		layout = "2006-01"
+		divider = 1.0 / 24.0 / 30.0
+	case "5m":
+		fallthrough
+	default:
+		// do nothing, this is the default
+		layout = "2006-01-02 15:04"
 	}
 
 	if layout != "" {
@@ -43,6 +54,10 @@ func Aggregate(entries []model.Entry, aggregate string) ([]model.Entry, error) {
 				fmt.Printf("error parsing created date after aggregation: %s error: %v\n", k, err)
 				return nil, err
 			}
+
+			// sum needs to be adjusted to "effect".
+			// If we've consumed 0.2kW in 5 minutes, that should translate to 60/5 x 0.2kW x 1000 to get effect in W
+			sum = divider * sum * 1000
 			out = append(out, model.Entry{CurrentUsage: sum, HomeId: v[0].HomeId, Created: created})
 		}
 		entries = out
@@ -50,5 +65,6 @@ func Aggregate(entries []model.Entry, aggregate string) ([]model.Entry, error) {
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Created.Before(entries[j].Created)
 	})
+
 	return entries, nil
 }
