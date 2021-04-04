@@ -7,8 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/timestreamquery"
 	"github.com/eriklupander/powertracker/functions/exporter/model"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http2"
-	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -30,12 +30,12 @@ func NewDataSource() *Source {
 	}
 
 	if err := http2.ConfigureTransport(tr); err != nil {
-		log.Fatalf("error configuring HTTP transport: %v", err)
+		logrus.Fatalf("error configuring HTTP transport: %v", err)
 	}
 
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("eu-west-1"), MaxRetries: aws.Int(3), HTTPClient: &http.Client{Transport: tr}})
 	if err != nil {
-		log.Fatalf("error creating timestream session: %v", err)
+		logrus.Fatalf("error creating timestream session: %v", err)
 	}
 	querySvc := timestreamquery.New(sess)
 	return &Source{

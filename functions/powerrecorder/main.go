@@ -2,9 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/labstack/gommon/log"
+	"github.com/sirupsen/logrus"
 )
 
 const tibberConfigKey = "prod/tibber_config"
@@ -21,7 +20,7 @@ func handler(ctx context.Context) error {
 
 	// connect to watty
 	if err := recordPowerUsageFromWatty(tibberApiKey, tibberHomeId); err != nil {
-		log.Error(err.Error())
+		logrus.WithError(err).Error("error recording power usage from Watty")
 	}
 
 	return nil
@@ -30,7 +29,7 @@ func handler(ctx context.Context) error {
 // main is called when a new lambda starts, so don't
 // expect to have something done for every query here.
 func main() {
-	fmt.Println("init power recorder")
+	logrus.Info("init power recorder")
 
 	// load secrets etc, will panic on errors.
 	configure()

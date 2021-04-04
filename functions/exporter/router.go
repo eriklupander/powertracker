@@ -31,13 +31,13 @@ func handle(source DataSource) func(w http.ResponseWriter, r *http.Request) {
 		fromStr := r.URL.Query().Get("from")
 		toStr := r.URL.Query().Get("to")
 		aggregate := r.URL.Query().Get("aggregate")
-		graph := r.URL.Query().Get("graph")
+		graphType := r.URL.Query().Get("graph")
 
 		if output == "" {
 			output = "csv"
 		}
-		if graph == "" {
-			graph = "hist"
+		if graphType == "" {
+			graphType = "hist"
 		}
 
 		entries, err := source.GetAll(fromStr, toStr)
@@ -54,13 +54,13 @@ func handle(source DataSource) func(w http.ResponseWriter, r *http.Request) {
 
 		switch output {
 		case "png":
-			exportPNG(w, entries, graph)
+			exportPNG(w, entries, graphType)
 		case "csv":
 			fallthrough
 		default:
 			exportCSV(w, entries)
 		}
-		fmt.Printf("exported %d entries in %s format between %s and %s\n", len(entries), output, fromStr, toStr)
+		logrus.Infof("exported %d entries in %s format between %s and %s\n", len(entries), output, fromStr, toStr)
 	}
 }
 

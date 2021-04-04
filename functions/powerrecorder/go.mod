@@ -11,12 +11,10 @@ require (
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/klauspost/compress v1.11.1 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/labstack/gommon v0.3.0
-	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/valyala/fasttemplate v1.2.1 // indirect
+	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 	golang.org/x/sys v0.0.0-20201016160150-f659759dc4ca // indirect
 	google.golang.org/protobuf v1.25.0 // indirect

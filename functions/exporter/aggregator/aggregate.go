@@ -7,6 +7,15 @@ import (
 	"time"
 )
 
+// Aggregate takes the "raw" 5-minute entries and aggregates them to either:
+// 1h == per hour
+// 1d == per day
+// 1M == per month
+// 5m == default.
+//
+// Raw usage values are transformed from kW to Watts.
+//
+// The implementation is slightly buggy, especially in regard to per-day aggregation when local time is not UTC.
 func Aggregate(entries []model.Entry, aggregate string) ([]model.Entry, error) {
 
 	layout := ""
@@ -51,8 +60,7 @@ func Aggregate(entries []model.Entry, aggregate string) ([]model.Entry, error) {
 			}
 			created, err := time.Parse(layout, k)
 			if err != nil {
-				fmt.Printf("error parsing created date after aggregation: %s error: %v\n", k, err)
-				return nil, err
+				return nil, fmt.Errorf("error parsing created date after aggregation: %s error: %w", k, err)
 			}
 
 			// sum needs to be adjusted to "effect".
@@ -62,6 +70,8 @@ func Aggregate(entries []model.Entry, aggregate string) ([]model.Entry, error) {
 		}
 		entries = out
 	}
+
+	// sort aggregated data in ASC by date
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Created.Before(entries[j].Created)
 	})

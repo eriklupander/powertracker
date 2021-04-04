@@ -20,37 +20,33 @@ export class PowertrackerStack extends cdk.Stack {
         //     tableName: "power_record"
         // })
 
-        // Build powerecorder lambda
+        // IAM policies
+        const timeStreamPolicy = new iam.PolicyStatement({
+            actions: ["timestream:*"],
+            resources: ["*"]
+        })
+        const secretsPolicy = new iam.PolicyStatement({
+            actions: ["secretsmanager:GetSecretValue"],
+            resources: ["arn:aws:secretsmanager:*:secret:prod/tibber_config-*"]
+        })
+
+        // Build PowerRecorder lambda that reads data from Tibber and stores in Timestream DB
         const powerRecorderFunction = this.buildGolangLambda('powerRecorder', path.join(__dirname, '../functions/powerRecorder'), 'main', 10);
 
-        // Build EventBridge rule with cron expression and bind to lambda
+        // Build EventBridge rule with cron expression and bind to lambda to trigger powerRecorder lambda
         const rule = new ruleCdk.Rule(this, "collect_power_rule", {
             description: "Invoked every minute to collect current power state",
             schedule: Schedule.expression("cron(0/5 * * * ? *)")
         });
         rule.addTarget(new targets.LambdaFunction(powerRecorderFunction))
 
-        // Build API lambda
-        const powerRecorderPolicyStmt = new iam.PolicyStatement()
-        powerRecorderPolicyStmt.addActions(
-            "secretsmanager:GetSecretValue",
-            "timestream:*"
-        )
-        powerRecorderPolicyStmt.addResources(
-            "arn:aws:secretsmanager:*:secret:prod/tibber_config-*",
-            "arn:aws:timestream:*"
-        )
-        powerRecorderFunction.addToRolePolicy(powerRecorderPolicyStmt)
+        // Add IAM for powerrecorder
+        powerRecorderFunction.addToRolePolicy(timeStreamPolicy)
+        powerRecorderFunction.addToRolePolicy(secretsPolicy)
 
+        // Build Exporter API lambda and bind IAM for timestream access
         const exporterLambdaFn = this.buildGolangLambda('exporter-api', path.join(__dirname, '../functions/exporter'), 'main', 30);
-        const exporterPolicyStmt = new iam.PolicyStatement()
-        exporterPolicyStmt.addActions(
-            "timestream:*",
-        )
-        exporterPolicyStmt.addResources(
-            "arn:aws:timestream:*",
-        )
-        exporterLambdaFn.addToRolePolicy(exporterPolicyStmt)
+        exporterLambdaFn.addToRolePolicy(timeStreamPolicy)
 
         // Create HTTP API Gateway in front of the lambda
         const apiGtw = this.createApiGatewayForLambda("exporter-api-endpoint", exporterLambdaFn, 'Powertracker endpoints')

@@ -22,7 +22,7 @@ func ExportLinePlot(entries []model.Entry) ([]byte, error) {
 	p.Title.Text = "Power usage"
 	p.X.Label.Text = "Time"
 	p.X.Min = float64(entries[0].Created.Unix())
-	p.X.Tick.Marker = DateTimeTicks{}
+	p.X.Tick.Marker = NewDateTimeTicks(6)
 	p.Y.Label.Text = "Power (watts)"
 	p.Y.Min = 0
 
@@ -58,7 +58,7 @@ func ExportHist(entries []model.Entry) ([]byte, error) {
 	p.Title.Text = "Power usage"
 	p.X.Label.Text = "Time (UTC)"
 	p.X.Min = float64(entries[0].Created.Unix())
-	p.X.Tick.Marker = UTCDateTimeTicks{}
+	p.X.Tick.Marker = NewUTCDateTimeTicks(6.0)
 	p.Y.Label.Text = "Power (watts)"
 	p.Y.Max = linq.From(entries).Select(func(i interface{}) interface{} {
 		return i.(model.Entry).CurrentUsage

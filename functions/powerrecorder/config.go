@@ -4,26 +4,26 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/sirupsen/logrus"
 )
 
 func configure() {
-	var err error
 	tibberConfigJSON, err := getSecret(tibberConfigKey)
 	if err != nil {
-		panic(err.Error())
+		logrus.WithError(err).Fatal("error getting secrets from AWS Secrets Manager")
 	}
 	config := make(map[string]interface{})
 	if err := json.Unmarshal([]byte(tibberConfigJSON), &config); err != nil {
-		panic(err.Error())
+		logrus.WithError(err).Fatal("error unmarshalling tibber config JSON")
 	}
 	var ok bool
 	tibberApiKey, ok = config[tibberApiKeyKey].(string)
 	if !ok {
-		panic("unable to resolve tibber_api_key from JSON")
+		logrus.Fatal("unable to resolve tibber_api_key from JSON")
 	}
 	tibberHomeId, ok = config[tibberHomeIdKey].(string)
 	if !ok {
-		panic("unable to resolve tibber_home_id from JSON")
+		logrus.Fatal("unable to resolve tibber_home_id from JSON")
 	}
 }
 

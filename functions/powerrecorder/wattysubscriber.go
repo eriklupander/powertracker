@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/hasura/go-graphql-client"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -12,21 +12,23 @@ const tibberGQLSubscriptionUrl = "wss://api.tibber.com/v1-beta/gql/subscriptions
 
 func recordPowerUsageFromWatty(accessToken, homeId string) error {
 
-	sclient := graphql.NewSubscriptionClient(tibberGQLSubscriptionUrl).
+	subscriptionClient := graphql.NewSubscriptionClient(tibberGQLSubscriptionUrl).
 		WithConnectionParams(map[string]interface{}{
 			"token": accessToken,
 		})
 
-	defer sclient.Close()
+	defer subscriptionClient.Close()
 
+	// GraphQL variable
 	variables := map[string]interface{}{
 		"homeId": graphql.ID(homeId),
 	}
 
+	// Channel to pass data from subscription callback to "main" goroutine
 	dataChan := make(chan *subscription)
 
 	// Subscribe to real-time power usage
-	id, err := sclient.Subscribe(&subscription{}, variables, func(dataValue *json.RawMessage, errValue error) error {
+	id, err := subscriptionClient.Subscribe(&subscription{}, variables, func(dataValue *json.RawMessage, errValue error) error {
 		if errValue != nil {
 			return errValue
 		}
@@ -48,9 +50,9 @@ func recordPowerUsageFromWatty(accessToken, homeId string) error {
 
 	// finally run the subscription in a goroutine. If start fails, we'll pass nil to the dataChan.
 	go func() {
-		err = sclient.Run()
+		err = subscriptionClient.Run()
 		if err != nil {
-			fmt.Println("Error calling Run(): " + err.Error())
+			logrus.WithError(err).Error("error calling Run()")
 			dataChan <- nil // pass nil in order to cancel select below
 		}
 	}()
@@ -64,15 +66,17 @@ func recordPowerUsageFromWatty(accessToken, homeId string) error {
 	case <-time.NewTimer(time.Second * 10).C:
 
 	}
-	if err := sclient.Unsubscribe(id); err != nil {
-		fmt.Println("an error occurred trying to unsubscribe from subscription: " + err.Error())
+	if err := subscriptionClient.Unsubscribe(id); err != nil {
+		logrus.WithError(err).Error("error occurred trying to unsubscribe from subscription")
 	}
 	return nil
 }
 
+// subscription forms the root of our GraphQL query having a homeId parameter.
 type subscription struct {
 	LiveMeasurement liveMeasurement `graphql:"liveMeasurement(homeId: $homeId)"`
 }
+// liveMeasurement forms the timestamp + accumulated usage part of the GraphQL query
 type liveMeasurement struct {
 	Timestamp              graphql.String `graphql:"timestamp"`
 	AccumulatedConsumption graphql.Float  `graphql:"accumulatedConsumption"`
