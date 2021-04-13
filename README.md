@@ -13,14 +13,12 @@ Uses the following services:
 * AWS Timestream for time-series data
 * AWS Secret Manager for storing Tibber API key
 
-
 All lambdas are written in Golang.
 
 AWS CDK is used for all provisioning, building the Go lambda's etc.
 
 ## CDK basics
-
-This is a project for TypeScript development with CDK.
+This project was generated using 
 
 The `cdk.json` file tells the CDK Toolkit how to execute your app.
 

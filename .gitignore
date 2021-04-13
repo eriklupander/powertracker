@@ -10,3 +10,5 @@ cdk.out
 # IDEA
 *.iml
 
+# OS X
+.DS_Store

@@ -65,9 +65,7 @@ func writeData(writeSvc *timestreamwrite.TimestreamWrite, databaseName string, t
 		},
 	}
 
-	_, err := writeSvc.WriteRecords(writeRecordsInput)
-
-	if err != nil {
+	if _, err := writeSvc.WriteRecords(writeRecordsInput); err != nil {
 		logrus.WithError(err).Error("error writing power usage records")
 	}
 }

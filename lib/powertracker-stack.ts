@@ -5,6 +5,7 @@ import {Schedule} from "@aws-cdk/aws-events"
 import {HttpApi, HttpMethod} from "@aws-cdk/aws-apigatewayv2"
 import {LambdaProxyIntegration} from "@aws-cdk/aws-apigatewayv2-integrations"
 import iam = require("@aws-cdk/aws-iam");
+import {PowerTrackerTimestreamConstruct} from "./powertracker-timestream";
 
 const ruleCdk = require('@aws-cdk/aws-events')
 const targets = require('@aws-cdk/aws-events-targets')
@@ -31,7 +32,7 @@ export class PowertrackerStack extends cdk.Stack {
         })
 
         // Build PowerRecorder lambda that reads data from Tibber and stores in Timestream DB
-        const powerRecorderFunction = this.buildGolangLambda('powerRecorder', path.join(__dirname, '../functions/powerRecorder'), 'main', 10);
+        const powerRecorderFunction = this.buildGolangLambda('powerRecorder', path.join(__dirname, '../functions/powerRecorder'), 10);
 
         // Build EventBridge rule with cron expression and bind to lambda to trigger powerRecorder lambda
         const rule = new ruleCdk.Rule(this, "collect_power_rule", {
@@ -45,7 +46,7 @@ export class PowertrackerStack extends cdk.Stack {
         powerRecorderFunction.addToRolePolicy(secretsPolicy)
 
         // Build Exporter API lambda and bind IAM for timestream access
-        const exporterLambdaFn = this.buildGolangLambda('exporter-api', path.join(__dirname, '../functions/exporter'), 'main', 30);
+        const exporterLambdaFn = this.buildGolangLambda('exporter-api', path.join(__dirname, '../functions/exporter'), 30);
         exporterLambdaFn.addToRolePolicy(timeStreamPolicy)
 
         // Create HTTP API Gateway in front of the lambda
@@ -57,7 +58,7 @@ export class PowertrackerStack extends cdk.Stack {
 
     // buildGolangLambda builds a docker image from the code at <lambdaPath> (e.g. relative path to go code root)
     // and creates the lambda function by using a docker image.
-    buildGolangLambda(id: string, lambdaPath: string, handler: string, timeout: number): lambda.Function {
+    buildGolangLambda(id: string, lambdaPath: string, timeout: number): lambda.Function {
         const environment = {
             CGO_ENABLED: '0',
             GOOS: 'linux',
@@ -76,7 +77,7 @@ export class PowertrackerStack extends cdk.Stack {
                     ]
                 }
             }),
-            handler,
+            handler: 'main',
             runtime: lambda.Runtime.GO_1_X,
             timeout: cdk.Duration.seconds(timeout),
         });
