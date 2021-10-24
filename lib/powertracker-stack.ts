@@ -2,10 +2,9 @@ import * as cdk from '@aws-cdk/core';
 import * as path from "path";
 import * as lambda from '@aws-cdk/aws-lambda';
 import {Schedule} from "@aws-cdk/aws-events"
-import {HttpApi, HttpMethod} from "@aws-cdk/aws-apigatewayv2"
+import {HttpApi, HttpMethod, PayloadFormatVersion} from "@aws-cdk/aws-apigatewayv2"
 import {LambdaProxyIntegration} from "@aws-cdk/aws-apigatewayv2-integrations"
 import iam = require("@aws-cdk/aws-iam");
-import {PowerTrackerTimestreamConstruct} from "./powertracker-timestream";
 
 const ruleCdk = require('@aws-cdk/aws-events')
 const targets = require('@aws-cdk/aws-events-targets')
@@ -91,6 +90,7 @@ export class PowertrackerStack extends cdk.Stack {
         })
         const lambdaProxyIntegration = new LambdaProxyIntegration({
             handler: handler,
+            payloadFormatVersion: PayloadFormatVersion.VERSION_1_0,
         })
         httpApi.addRoutes({
             integration: lambdaProxyIntegration,

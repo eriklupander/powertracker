@@ -1,16 +1,16 @@
 import {Construct, RemovalPolicy} from "@aws-cdk/core";
 import {CfnDatabase, CfnTable} from "@aws-cdk/aws-timestream";
 
-export interface PowerTrackerTimestreamConstructProps {
+export interface imestreamConstructProps {
     databaseName: string;
     tableName: string;
 }
 
-export class PowerTrackerTimestreamConstruct extends Construct {
+export class TimestreamConstruct extends Construct {
     public readonly database: CfnDatabase;
     public readonly table: CfnTable;
 
-    constructor(scope: Construct, id: string, props: PowerTrackerTimestreamConstructProps) {
+    constructor(scope: Construct, id: string, props: imestreamConstructProps) {
         super(scope, id);
         this.database = new CfnDatabase(this, 'Database', {
             databaseName: props.databaseName,

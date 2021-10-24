@@ -17,6 +17,16 @@ All lambdas are written in Golang.
 
 AWS CDK is used for all provisioning, building the Go lambda's etc.
 
+Change `cdk.json` in order to deploy either the powertracker or the chargerstatus stacks:
+
+```json
+"app": "npx ts-node --prefer-ts-exts bin/chargerstatus.ts",
+
+or
+
+"app": "npx ts-node --prefer-ts-exts bin/powertracker.ts.ts",
+```
+
 ## CDK basics
 This project was generated using 
 
