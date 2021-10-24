@@ -5,6 +5,7 @@ import (
 	"github.com/eriklupander/powertracker/functions/exporter/aggregator"
 	"github.com/eriklupander/powertracker/functions/exporter/csv"
 	"github.com/eriklupander/powertracker/functions/exporter/graph"
+	v2 "github.com/eriklupander/powertracker/functions/exporter/graph/v2"
 	"github.com/eriklupander/powertracker/functions/exporter/model"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -34,7 +35,7 @@ func handle(source DataSource) func(w http.ResponseWriter, r *http.Request) {
 		graphType := r.URL.Query().Get("graph")
 
 		if output == "" {
-			output = "csv"
+			output = "html"
 		}
 		if graphType == "" {
 			graphType = "hist"
@@ -56,12 +57,39 @@ func handle(source DataSource) func(w http.ResponseWriter, r *http.Request) {
 		case "png":
 			exportPNG(w, entries, graphType)
 		case "csv":
-			fallthrough
-		default:
 			exportCSV(w, entries)
+		default:
+			exportHTML(w, entries, graphType)
 		}
 		logrus.Infof("exported %d entries in %s format between %s and %s\n", len(entries), output, fromStr, toStr)
 	}
+}
+
+func exportHTML(w http.ResponseWriter, entries []model.Entry, graphType string) {
+	var data []byte
+	var err error
+	switch graphType {
+	case "lineplot":
+		data, err = v2.LineChart(entries)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	case "hist":
+		fallthrough
+	default:
+		data, err = v2.BarChart(entries)
+		if err != nil {
+			logrus.WithError(err).Info("error creating BarChart")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
+	logrus.Info("wrote all the headers")
+	_, _ = w.Write(data)
 }
 
 func exportCSV(w http.ResponseWriter, entries []model.Entry) {

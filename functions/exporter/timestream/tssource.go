@@ -20,7 +20,7 @@ func NewDataSource() *Source {
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			KeepAlive: 10 * time.Second,
-			Timeout: 10 * time.Second,
+			Timeout:   10 * time.Second,
 		}).DialContext,
 		MaxIdleConns:          2,
 		IdleConnTimeout:       5 * time.Second,
@@ -50,15 +50,19 @@ func (s *Source) GetAll(fromStr, toStr string) ([]model.Entry, error) {
 	idempotencyKey := uuid.New().String()
 
 	query := s.buildQuery(fromStr, toStr)
-
+	logrus.Infof("Using query: %s", query)
+	st := time.Now()
 	output, err := s.querySvc.Query(&timestreamquery.QueryInput{ClientToken: &idempotencyKey, QueryString: &query})
 	if err != nil {
 		return nil, err
 	}
+	logrus.Infof("querying timestream DB took %v, producing %d results", time.Since(st), len(output.Rows))
 
 	entries := make([]model.Entry, 0)
 	lastAccumulativeValue := -1.0
 	currentUsage := 0.0
+
+	st = time.Now()
 
 	for _, row := range output.Rows {
 
@@ -92,6 +96,7 @@ func (s *Source) GetAll(fromStr, toStr string) ([]model.Entry, error) {
 		})
 		lastAccumulativeValue = measure
 	}
+	logrus.Infof("processing timestream query results took %v", time.Since(st))
 
 	return entries, nil
 }
@@ -101,14 +106,19 @@ func (s *Source) buildQuery(fromStr string, toStr string) string {
 
 	// apply some semi-ugly date predicates if applicable
 	if fromStr != "" || toStr != "" {
-		from, fromErr := time.Parse("2006-01-02", fromStr)
-		to, toErr := time.Parse("2006-01-02", toStr)
+		from, fromErr := time.ParseInLocation("2006-01-02", fromStr, time.Local)
+		to, toErr := time.ParseInLocation("2006-01-02", toStr, time.Local)
 		if fromErr == nil && toErr == nil {
-			query += " WHERE pr.time > '" + from.Format("2006-01-02") + "' AND pr.time < '" + to.Format("2006-01-02") + "'"
+			logrus.Infof("Local TZ is: %v", from.Location())
+			query += " WHERE pr.time > '" + from.Format("2006-01-02 15:04:05") + "' AND pr.time < '" + to.Format("2006-01-02 15:04:05") + "'"
 		} else if toErr == nil {
-			query += " WHERE pr.time < '" + to.Format("2006-01-02") + "'"
+			logrus.Infof("Local TZ is: %v", to.Location())
+
+			query += " WHERE pr.time < '" + to.Format("2006-01-02 15:04:05") + "'"
 		} else if fromErr == nil {
-			query += " WHERE pr.time > '" + from.Format("2006-01-02") + "'"
+			logrus.Infof("Local TZ is: %v", from.Location())
+
+			query += " WHERE pr.time > '" + from.Format("2006-01-02 15:04:05") + "'"
 		}
 	}
 

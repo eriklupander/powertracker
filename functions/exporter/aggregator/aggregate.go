@@ -1,80 +1,114 @@
 package aggregator
 
 import (
-	"fmt"
+	"github.com/ahmetb/go-linq/v3"
 	"github.com/eriklupander/powertracker/functions/exporter/model"
-	"sort"
 	"time"
 )
 
-// Aggregate takes the "raw" 5-minute entries and aggregates them to either:
-// 1h == per hour
-// 1d == per day
-// 1M == per month
-// 5m == default.
-//
-// Raw usage values are transformed from kW to Watts.
-//
-// The implementation is slightly buggy, especially in regard to per-day aggregation when local time is not UTC.
 func Aggregate(entries []model.Entry, aggregate string) ([]model.Entry, error) {
 
-	layout := ""
-	divider := 12.0
 	switch aggregate {
 
 	case "1h":
-		layout = "2006-01-02 15"
-		divider = 1.0
+		return Aggregate1h(entries)
 	case "1d":
-		layout = "2006-01-02"
-		divider = 1.0 / 24.0
+		return Aggregate1D(entries)
 	case "1M":
-		layout = "2006-01"
-		divider = 1.0 / 24.0 / 30.0
+		return Aggregate1M(entries)
 	case "5m":
 		fallthrough
 	default:
-		// do nothing, this is the default
-		layout = "2006-01-02 15:04"
+		return Aggregate5m(entries), nil
 	}
-
-	if layout != "" {
-		// transform entries to "per hour" instead
-		// assume already sorted ASC
-		m := make(map[string][]model.Entry, 0)
-		for i := range entries {
-			t := entries[i].Created.Format(layout)
-			_, ok := m[t]
-			if !ok {
-				m[t] = make([]model.Entry, 0)
-			}
-			m[t] = append(m[t], entries[i])
-		}
-
-		// Now, sum each bucket and stuff into new list
-		out := make([]model.Entry, 0)
-		for k, v := range m {
-			sum := 0.0
-			for i := range v {
-				sum += v[i].CurrentUsage
-			}
-			created, err := time.Parse(layout, k)
-			if err != nil {
-				return nil, fmt.Errorf("error parsing created date after aggregation: %s error: %w", k, err)
-			}
-
-			// sum needs to be adjusted to "effect".
-			// If we've consumed 0.2kW in 5 minutes, that should translate to 60/5 x 0.2kW x 1000 to get effect in W
-			sum = divider * sum * 1000
-			out = append(out, model.Entry{CurrentUsage: sum, HomeId: v[0].HomeId, Created: created})
-		}
-		entries = out
-	}
-
-	// sort aggregated data in ASC by date
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Created.Before(entries[j].Created)
-	})
-
-	return entries, nil
 }
+
+// Aggregate5m assumes per 5m input and just multiplies the currentUsage by 12000 to get power in watts.
+func Aggregate5m(entries []model.Entry) []model.Entry {
+	for i := range entries {
+		entries[i].CurrentUsage = entries[i].CurrentUsage * 12 * 1000 // convert to per-hour in watts
+	}
+	return entries
+}
+
+// Aggregate1h assumes 5m input data, groups entries by day+hour and outputs the average power
+// for each hour of the time series.
+func Aggregate1h(entries []model.Entry) ([]model.Entry, error) {
+	output := make([]model.Entry, 0)
+
+	// assume 5m input
+	linq.From(entries).
+		GroupByT(func(e model.Entry) string {
+			return e.Created.Local().Format("2006-01-02 15") + ":00"
+		}, func(e model.Entry) float64 {
+			return e.CurrentUsage
+		}).
+		SortT(func(i, j linq.Group) bool {
+			return i.Key.(string) < j.Key.(string)
+		}).
+		ForEachT(func(group linq.Group) {
+			ts, err := time.Parse("2006-01-02 15:04", group.Key.(string))
+			if err != nil {
+				panic(err.Error())
+			}
+			output = append(output, model.Entry{
+				CurrentUsage: linq.From(group.Group).SumFloats() * 1000,
+				Created:      ts,
+			})
+		})
+	return output, nil
+}
+
+// Aggregate1D assumes 5m input and groups entries per (local time) date, outputting the average
+// power for each day. Note - not the cumulative energy used for the full day - the average power in watts
+// during the date.
+func Aggregate1D(entries []model.Entry) ([]model.Entry, error) {
+	output := make([]model.Entry, 0)
+	// assume 5m input
+	linq.From(entries).
+		GroupByT(func(e model.Entry) string {
+			return e.Created.Local().Format("2006-01-02")
+		}, func(e model.Entry) float64 {
+			return e.CurrentUsage
+		}).
+		SortT(func(i, j linq.Group) bool {
+			return i.Key.(string) < j.Key.(string)
+		}).
+		ForEachT(func(group linq.Group) {
+			ts, err := time.Parse("2006-01-02", group.Key.(string))
+			if err != nil {
+				panic(err.Error())
+			}
+			output = append(output, model.Entry{
+				CurrentUsage: linq.From(group.Group).SumFloats() / float64(len(group.Group)) * 12 * 1000,
+				Created:      ts,
+			})
+		})
+	return output, nil
+}
+
+func Aggregate1M(entries []model.Entry) ([]model.Entry, error) {
+	output := make([]model.Entry, 0)
+	// assume 5m input
+	linq.From(entries).
+		GroupByT(func(e model.Entry) string {
+			return e.Created.Local().Format("2006-01")
+		}, func(e model.Entry) float64 {
+			return e.CurrentUsage
+		}).
+		SortT(func(i, j linq.Group) bool {
+			return i.Key.(string) < j.Key.(string)
+		}).
+		ForEachT(func(group linq.Group) {
+			ts, err := time.Parse("2006-01", group.Key.(string))
+			if err != nil {
+				panic(err.Error())
+			}
+			output = append(output, model.Entry{
+				CurrentUsage: linq.From(group.Group).SumFloats(),
+				Created:      ts,
+			})
+		})
+	return output, nil
+}
+

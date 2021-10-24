@@ -13,14 +13,14 @@ import (
 )
 
 func TestExportWith5MinuteAggregation(t *testing.T) {
-	entries, err := aggregator.Aggregate(testutil.LoadEntriesFromCSV(t, "../testdata/usage-20210327.csv"), "5m")
+	entries := testutil.LoadEntriesFromCSV(t, "../testdata/usage-20210327.csv")
 	data, err := ExportLinePlot(entries)
 	assert.NoError(t, err)
 	assert.NotNil(t, data)
 	assert.NoError(t, ioutil.WriteFile("usage-aggregated-5m.png", data, os.FileMode(0755)))
 }
 func TestExportWithHourAggregation(t *testing.T) {
-	entries, err := aggregator.Aggregate(testutil.LoadEntriesFromCSV(t, "../testdata/usage-20210327.csv"), "1h")
+	entries, err := aggregator.Aggregate1h(testutil.LoadEntriesFromCSV(t, "../testdata/usage-20210327.csv"))
 	data, err := ExportLinePlot(entries)
 	assert.NoError(t, err)
 	assert.NotNil(t, data)
@@ -35,7 +35,7 @@ func TestExportWeekWith5MinuteAggregation(t *testing.T) {
 }
 
 func TestExportWithHourAggregationMultiDay(t *testing.T) {
-	entries, err := aggregator.Aggregate(testutil.LoadEntriesFromCSV(t, "../testdata/usage.csv"), "1h")
+	entries, err := aggregator.Aggregate1h(testutil.LoadEntriesFromCSV(t, "../testdata/usage.csv"))
 	data, err := ExportLinePlot(entries)
 	assert.NoError(t, err)
 	assert.NotNil(t, data)
@@ -57,7 +57,6 @@ func TestExportHistogram1h(t *testing.T) {
 	assert.NotNil(t, data)
 	assert.NoError(t, ioutil.WriteFile("histogram-1h-multiday.png", data, os.FileMode(0755)))
 }
-
 
 func buildEntries() []model.Entry {
 	then := time.Date(2021, 3, 1, 0, 0, 0, 0, time.Local)
