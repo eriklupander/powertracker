@@ -1,6 +1,6 @@
-import * as lambda from "@aws-cdk/aws-lambda";
-import * as cdk from "@aws-cdk/core";
-import {Construct} from "@aws-cdk/core";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import { Construct } from 'constructs';
+import {Duration} from "aws-cdk-lib";
 
 export class GolangBuilder extends Construct {
 
@@ -25,7 +25,8 @@ export class GolangBuilder extends Construct {
             }),
             handler: 'main',
             runtime: lambda.Runtime.GO_1_X,
-            timeout: cdk.Duration.seconds(timeout),
+            timeout: Duration.seconds(timeout),
+           // timeout: cdk.Duration.seconds(timeout),
         });
     }
 }

@@ -26,7 +26,6 @@ func (iw *InfluxWriter) Flush() {
 
 func NewInfluxWriter(bucket, org string) *InfluxWriter {
 	client := influxdb2.NewClient("https://eu-central-1-1.aws.cloud2.influxdata.com", influxTbToken)
-
 	return &InfluxWriter{writeApi: client.WriteAPI(org, bucket)}
 }
 

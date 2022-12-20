@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func ScrapeChargers(influxWriter RecordWriter) error {
+func scrapeChargers(influxWriter RecordWriter) error {
 	ctx, cfn := context.WithTimeout(context.Background(), time.Second*20)
 	defer cfn()
 
@@ -18,13 +18,15 @@ func ScrapeChargers(influxWriter RecordWriter) error {
 	wg := sync.WaitGroup{}
 	wg.Add(len(chargeFinderSites))
 	for _, site := range chargeFinderSites {
+
 		go collect(ctx, site, &wg, influxWriter, chargeFinderProvider)
+
 		// add a slight artificial stagger to avoid tripping any rate limiters at Chargefinder
 		time.Sleep(time.Millisecond * 100)
 	}
 	wg.Wait()
 	logrus.Info("scraping done!")
-	influxWriter.Flush()
+
 	return nil
 }
 

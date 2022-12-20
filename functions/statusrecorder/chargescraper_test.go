@@ -10,7 +10,7 @@ import (
 
 func Test_ScrapeAll(t *testing.T) {
 	mockWriter := NewMockWriter()
-	assert.NoError(t, ScrapeChargers(mockWriter))
+	assert.NoError(t, scrapeChargers(mockWriter))
 
 	fmt.Printf("%v\n", mockWriter.entries)
 }

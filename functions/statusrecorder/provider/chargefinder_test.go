@@ -29,12 +29,6 @@ func Test_ParseIonityAllFree(t *testing.T) {
 	assert.Equal(t, 3, record.Available)
 }
 
-//
-//func Test_ParseIonityOneOccupiedFree(t *testing.T) {
-//
-//	record := parseChargers([]byte(ionityOneOccupied))
-//	assert.Equal(t, 3, record.Available)
-//}
 func Test_ParseMerMixedAllCCSFree(t *testing.T) {
 	list := findCCSChargersOnSite([]byte(siteMerMix))
 	record, err := parseChargers(list, []byte(merMixAllFree))

@@ -28,7 +28,7 @@ func recordPowerUsageFromWatty(accessToken, homeId string) error {
 	dataChan := make(chan *subscription)
 
 	// Subscribe to real-time power usage
-	id, err := subscriptionClient.Subscribe(&subscription{}, variables, func(dataValue *json.RawMessage, errValue error) error {
+	id, err := subscriptionClient.Subscribe(&subscription{}, variables, func(dataValue []byte, errValue error) error {
 		if errValue != nil {
 			return errValue
 		}
@@ -36,7 +36,7 @@ func recordPowerUsageFromWatty(accessToken, homeId string) error {
 			return errors.New("got nil data")
 		}
 		m := &subscription{}
-		if err := json.Unmarshal(*dataValue, m); err != nil {
+		if err := json.Unmarshal(dataValue, m); err != nil {
 			return errors.Wrap(err, "unmarshalling measurement")
 		}
 
@@ -76,6 +76,7 @@ func recordPowerUsageFromWatty(accessToken, homeId string) error {
 type subscription struct {
 	LiveMeasurement liveMeasurement `graphql:"liveMeasurement(homeId: $homeId)"`
 }
+
 // liveMeasurement forms the timestamp + accumulated usage part of the GraphQL query
 type liveMeasurement struct {
 	Timestamp              graphql.String `graphql:"timestamp"`
