@@ -35,7 +35,7 @@ func collect(ctx context.Context, site model.Site, wg *sync.WaitGroup, influxWri
 
 	r, err := provider.LoadSite(ctx, site)
 	if err != nil {
-		logrus.WithError(err).Infof("error collecting data from site %v", site.Id)
+		logrus.WithError(err).Infof("error collecting data from site %v - %s", site.Id, site.Name)
 		wg.Done()
 		return
 	}
@@ -47,7 +47,7 @@ func collect(ctx context.Context, site model.Site, wg *sync.WaitGroup, influxWri
 		"available": r.Available,
 		"max":       r.Total,
 		"duration":  time.Since(st).String(),
-	}).Infof("scraped site %s", site.Id)
+	}).Infof("scraped site %s - %s", site.Id, site.Name)
 	wg.Done()
 }
 
